@@ -19,9 +19,12 @@
 #include "qemu/error-report.h"
 #include "sysemu/qtest.h"
 
+#include "hw/misc/mytest.h"
+
 typedef struct IMX6Sabrelite {
     FslIMX6State soc;
     MemoryRegion ram;
+    MyTest mytest_board_hw;
 } IMX6Sabrelite;
 
 static struct arm_boot_info sabrelite_binfo = {
@@ -101,6 +104,24 @@ static void sabrelite_init(MachineState *machine)
                 sysbus_connect_irq(SYS_BUS_DEVICE(spi_dev), 1, cs_line);
             }
         }
+    }
+
+    /*
+     * MYTEST
+     */
+    object_initialize(&s->mytest_board_hw, sizeof(s->mytest_board_hw), TYPE_MYTEST);
+    object_property_add_child(OBJECT(machine), "mytest", OBJECT(&s->mytest_board_hw),
+                              &error_abort);
+    #define MYTEST_ADDR (FSL_IMX6_MMDC_ADDR+0x40000000)
+    sysbus_mmio_map(SYS_BUS_DEVICE(&s->mytest_board_hw), 0, MYTEST_ADDR);
+
+    sysbus_connect_irq(SYS_BUS_DEVICE(&s->mytest_board_hw), 0,
+                        qdev_get_gpio_in(DEVICE(&s->soc.a9mpcore), 42));
+
+    object_property_set_bool(OBJECT(&s->mytest_board_hw), true, "realized", &err);
+    if (err != NULL) {
+        error_report("%s", error_get_pretty(err));
+        exit(1);
     }
 
     sabrelite_binfo.ram_size = machine->ram_size;
