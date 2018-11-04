@@ -3,6 +3,7 @@
 #include "qemu/osdep.h"
 #include "sysemu/sysemu.h"
 #include "qemu/log.h"
+#include "qemu/timer.h"
 
 #include "hw/misc/mytest.h"
 
@@ -77,11 +78,19 @@ static void mytest_iomem_write(void *opaque, hwaddr offset,
             
             if (s->data1 == 0) {
                 DPRINTF("reset IRQ\n");
+                if (NULL != s->timer) {
+                    timer_del(s->timer);
+                }
                 qemu_set_irq(s->irq, 0);
             } else if (s->data1 == 1) {
                 s->data1 = 0xFFFFFFFF;
-                DPRINTF("raise IRQ\n");
-                qemu_set_irq(s->irq, 1);
+                if (NULL != s->timer) {
+                    DPRINTF("raise postponed\n");
+                    timer_mod(s->timer, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + NANOSECONDS_PER_SECOND/2);
+                } else {
+                    DPRINTF("raise IRQ\n");
+                    qemu_set_irq(s->irq, 1);
+                }
             } else {
                 s->data1 ++;
             }
@@ -105,6 +114,7 @@ static const struct MemoryRegionOps mytest_iomem_ops = {
 
 static void mytest_init(Object *obj)
 {
+    DPRINTF("mytest_init\n");
     // DeviceState *d = DEVICE(obj);
     SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
     MyTest *s = MYTEST(obj);
@@ -120,6 +130,16 @@ static void mytest_init(Object *obj)
     sysbus_init_irq(sbd, &s->irq);
 }
 
+static void mytest_finalize(Object *obj) 
+{
+    DPRINTF("mytest_finalize\n");
+    MyTest *s = MYTEST(obj);
+    if (NULL != s->timer) {
+        timer_free(s->timer);
+        s->timer = NULL;
+    }
+}
+
 static DeviceReset old_callback_reset = NULL;
 static void mytest_reset_at_boot(DeviceState *dev)
 {
@@ -130,6 +150,24 @@ static void mytest_reset_at_boot(DeviceState *dev)
     if (old_callback_reset != NULL) {
         old_callback_reset(dev);
     }
+
+    if (NULL != s->timer) {
+        timer_del(s->timer);
+    }
+}
+
+static void mytest_timer_expired(void *dev)
+{
+    MyTest *s = MYTEST(dev);
+
+    DPRINTF("mytest timer expired\n");
+
+    DPRINTF("raise IRQ\n");
+    qemu_set_irq(s->irq, 1);
+
+    if (NULL != s->timer) {
+        timer_del(s->timer);
+    }
 }
 
 static DeviceRealize old_callback_realize = NULL;
@@ -138,6 +176,7 @@ static void mytest_realize(DeviceState *dev, Error **errp)
     DPRINTF("initialization\n");
     MyTest *s = MYTEST(dev);
     s->data1 = 0;
+    s->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, mytest_timer_expired, dev);
 
     if (old_callback_realize != NULL) {
         old_callback_realize(dev, errp);
@@ -166,6 +205,7 @@ static const TypeInfo mytest_info = {
     .instance_init = mytest_init,
     .class_size    = sizeof(MyTestClass),
     .class_init    = mytest_static_init,
+    .instance_finalize = mytest_finalize,
 };
 
 static void mytest_register_type(void)

@@ -16,6 +16,7 @@
 typedef struct MyTest {
     /*< private >*/
     SysBusDevice parent_obj;
+    QEMUTimer *timer;
 
     /*< public >*/
     // settings
