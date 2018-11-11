@@ -78,19 +78,12 @@ static void mytest_iomem_write(void *opaque, hwaddr offset,
             
             if (s->data1 == 0) {
                 DPRINTF("reset IRQ\n");
-                if (NULL != s->timer) {
-                    timer_del(s->timer);
-                }
+                timer_del(&(s->timer));
                 qemu_set_irq(s->irq, 0);
             } else if (s->data1 == 1) {
                 s->data1 = 0xFFFFFFFF;
-                if (NULL != s->timer) {
-                    DPRINTF("raise postponed\n");
-                    timer_mod(s->timer, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + NANOSECONDS_PER_SECOND/2);
-                } else {
-                    DPRINTF("raise IRQ\n");
-                    qemu_set_irq(s->irq, 1);
-                }
+                DPRINTF("raise postponed\n");
+                timer_mod(&(s->timer), qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) + NANOSECONDS_PER_SECOND/2);
             } else {
                 s->data1 ++;
             }
@@ -134,10 +127,7 @@ static void mytest_finalize(Object *obj)
 {
     DPRINTF("mytest_finalize\n");
     MyTest *s = MYTEST(obj);
-    if (NULL != s->timer) {
-        timer_free(s->timer);
-        s->timer = NULL;
-    }
+    timer_deinit(&(s->timer));
 }
 
 static DeviceReset old_callback_reset = NULL;
@@ -151,9 +141,7 @@ static void mytest_reset_at_boot(DeviceState *dev)
         old_callback_reset(dev);
     }
 
-    if (NULL != s->timer) {
-        timer_del(s->timer);
-    }
+    timer_del(&(s->timer));
 }
 
 static void mytest_timer_expired(void *dev)
@@ -165,9 +153,7 @@ static void mytest_timer_expired(void *dev)
     DPRINTF("raise IRQ\n");
     qemu_set_irq(s->irq, 1);
 
-    if (NULL != s->timer) {
-        timer_del(s->timer);
-    }
+    timer_del(&(s->timer));
 }
 
 static DeviceRealize old_callback_realize = NULL;
@@ -176,7 +162,7 @@ static void mytest_realize(DeviceState *dev, Error **errp)
     DPRINTF("initialization\n");
     MyTest *s = MYTEST(dev);
     s->data1 = 0;
-    s->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, mytest_timer_expired, dev);
+    timer_init_ns(&(s->timer), QEMU_CLOCK_VIRTUAL, mytest_timer_expired, dev);
 
     if (old_callback_realize != NULL) {
         old_callback_realize(dev, errp);
@@ -187,7 +173,8 @@ static void mytest_static_init(ObjectClass *klass, void *data)
 {
     DeviceClass       *dc = DEVICE_CLASS(klass);
     //SysBusDeviceClass *sdc = SYS_BUS_DEVICE_CLASS(klass);
-    //MyTestClass       *mdc = MYTEST_CLASS(klass);
+    MyTestClass       *mdc = MYTEST_CLASS(klass);
+    mdc->method = NULL;  // initialize our virtual method
 
     // overwrite virtual method
     old_callback_reset =  dc->reset; dc->reset = mytest_reset_at_boot;
