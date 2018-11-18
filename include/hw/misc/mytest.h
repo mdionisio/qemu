@@ -30,6 +30,50 @@
  * 2. to convert a generic object interface in out object interface (dynamic canst in c++)
  * 3. to convert a our object state in out object interface
  * 
+ * 
+ * MyTest ----> SysBus ----> Device ----> Object   (class diagram)
+ * 
+ * (http://people.redhat.com/~thuth/blog/qemu/2018/09/10/instance-init-realize.html)
+ * There are three different initialization functions involved here, 
+ * the class_init, the instance_init and the realize function.
+ * 
+ * 
+ * 
+ * 
+ * Object  (see include/qom/object.h)
+ *     - System for dynamically registering types
+ *     - Support for single-inheritance of types
+ *     - Multiple inheritance of stateless interfaces
+ * 
+ * Device   (see include/hw/qdev-core.h)
+ *     -  2 step initialization (costructor + realize)
+ * 
+ * SysBusDevice (see include/hw/sysbus.h)
+ *     -  device able to manage memory region and irq attached to the main system bus
+ * 
+ * 
+ * 
+ * Qemu Object Model: (https://wiki.qemu.org/Features/QOM)
+ * 
+ * - Everything in QOM is a device.
+ * - Devices can have two types of relationships with other devices: device composition or device backlinks. 
+ *   Device composition involves one device directly creating another device. 
+ *   It will own life cycle management for the created device and will generally propagate events to that device (although there are exceptions).
+ * 
+ * 
+ * - The two main "concepts" in QDev are devices and busses. A
+ *   device is represented by a DeviceState and a bus is represented by a BusState. 
+ *   Devices can have properties but busses cannot. 
+ *   A device has no direct relationship with other devices. The only relationship is indirect through busses.
+ * 
+ * - A device may have zero or more busses associated with it via a has-a relationship. 
+ *   Each child bus may have multiple devices associated with it via a reference. 
+ *   All devices have a single parent bus and all busses have a single parent device. 
+ *   These relationships form a strict tree where every alternating level is a bus level followed by a device level. 
+ *   The root of the tree is the main system bus often referred to as SysBus.
+ * 
+ * 
+ * 
  */
 
 
