@@ -52,7 +52,6 @@
  *     -  device able to manage memory region and irq attached to the main system bus
  * 
  * 
- * 
  * Qemu Object Model: (https://wiki.qemu.org/Features/QOM)
  * 
  * - Everything in QOM is a device.
@@ -73,6 +72,9 @@
  *   The root of the tree is the main system bus often referred to as SysBus.
  * 
  * 
+ * ex:
+ *    explore device property with:
+ * ./arm-softmmu/qemu-system-arm -M sabrelite -cpu cortex-a9 -nographic -device mytest,help
  * 
  */
 
