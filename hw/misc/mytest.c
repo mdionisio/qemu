@@ -105,12 +105,15 @@ static const struct MemoryRegionOps mytest_iomem_ops = {
     .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
+static void mytest_timer_expired(void *dev);
+
 static void mytest_init(Object *obj)
 {
     DPRINTF("mytest_init\n");
     // DeviceState *d = DEVICE(obj);
     SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
     MyTest *s = MYTEST(obj);
+    s->data1 = 0;
 
     memory_region_init_io(&s->iomem,                   // memory region to initialize
                           obj,                         // owner object
@@ -121,6 +124,8 @@ static void mytest_init(Object *obj)
                           );
     sysbus_init_mmio(sbd, &s->iomem);
     sysbus_init_irq(sbd, &s->irq);
+
+    timer_init_ns(&(s->timer), QEMU_CLOCK_VIRTUAL, mytest_timer_expired, obj);
 }
 
 static void mytest_finalize(Object *obj) 
@@ -162,7 +167,6 @@ static void mytest_realize(DeviceState *dev, Error **errp)
     DPRINTF("initialization\n");
     MyTest *s = MYTEST(dev);
     s->data1 = 0;
-    timer_init_ns(&(s->timer), QEMU_CLOCK_VIRTUAL, mytest_timer_expired, dev);
 
     if (old_callback_realize != NULL) {
         old_callback_realize(dev, errp);
