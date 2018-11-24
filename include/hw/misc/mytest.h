@@ -105,3 +105,4 @@ typedef struct MyTestClass
 } MyTestClass;
 
 void mytest_method(MyTest *obj);    // convinient public way to easy call public method on object
+void mytest_reset(MyTest *obj);    // convinient public way to easy call public reset on object
