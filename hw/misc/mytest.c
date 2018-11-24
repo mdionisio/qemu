@@ -4,6 +4,8 @@
 #include "sysemu/sysemu.h"
 #include "qemu/log.h"
 #include "qemu/timer.h"
+#include "hw/qdev-properties.h"
+#include "qapi/visitor.h"
 
 #include "hw/misc/mytest.h"
 
@@ -107,13 +109,39 @@ static const struct MemoryRegionOps mytest_iomem_ops = {
 
 static void mytest_timer_expired(void *dev);
 
+
+static void mytest_get(Object *obj, Visitor *v, const char *name,
+                                   void *opaque, Error **errp)
+{
+    MyTest *s = MYTEST(obj);
+    int64_t value = s->data1;
+
+    visit_type_int(v, name, &value, errp);
+
+    DPRINTF("mytest get\n");
+}
+
+static void mytest_set(Object *obj, Visitor *v, const char *name,
+                                   void *opaque, Error **errp)
+{
+    MyTest *s = MYTEST(obj);
+    Error *local_err = NULL;
+    int64_t temp;
+
+    visit_type_int(v, name, &temp, &local_err);
+
+    s->data1 = temp;
+    DPRINTF("mytest set\n");
+}
+
+
 static void mytest_init(Object *obj)
 {
     DPRINTF("mytest_init\n");
     // DeviceState *d = DEVICE(obj);
     SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
     MyTest *s = MYTEST(obj);
-    s->data1 = 0;
+    //s->data1 = 0;                     // not initialized here becase there is the property initialized defined
 
     memory_region_init_io(&s->iomem,                   // memory region to initialize
                           obj,                         // owner object
@@ -126,6 +154,11 @@ static void mytest_init(Object *obj)
     sysbus_init_irq(sbd, &s->irq);
 
     timer_init_ns(&(s->timer), QEMU_CLOCK_VIRTUAL, mytest_timer_expired, obj);
+
+    // example of property
+    object_property_add(obj, "data", "int",
+                        mytest_get,
+                        mytest_set, NULL, NULL, NULL);
 }
 
 static void mytest_finalize(Object *obj) 
@@ -165,13 +198,18 @@ static DeviceRealize old_callback_realize = NULL;
 static void mytest_realize(DeviceState *dev, Error **errp)
 {
     DPRINTF("initialization\n");
-    MyTest *s = MYTEST(dev);
-    s->data1 = 0;
 
     if (old_callback_realize != NULL) {
         old_callback_realize(dev, errp);
     }
 }
+
+// example of property that can be initialized
+static Property properties[] = {
+    DEFINE_PROP_UINT32("data1", MyTest, data1, 0),
+    DEFINE_PROP_END_OF_LIST(),
+};
+
 
 static void mytest_static_init(ObjectClass *klass, void *data)
 {
@@ -185,6 +223,7 @@ static void mytest_static_init(ObjectClass *klass, void *data)
     old_callback_realize = dc->realize; dc->realize = mytest_realize;
 
     dc->desc = "MyTest Device";
+    dc->props = properties;
 
     set_bit(DEVICE_CATEGORY_MISC, dc->categories);
 }

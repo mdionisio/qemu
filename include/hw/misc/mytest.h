@@ -75,6 +75,7 @@
  * ex:
  *    explore device property with:
  * ./arm-softmmu/qemu-system-arm -M sabrelite -cpu cortex-a9 -nographic -device mytest,help
+ * ./arm-softmmu/qemu-system-arm -M sabrelite -cpu cortex-a9 -nographic -global mytest.data1=2
  * 
  */
 
