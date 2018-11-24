@@ -37,6 +37,14 @@ void mytest_method(MyTest *obj)
     }
 }
 
+void mytest_reset(MyTest *obj) {
+    DPRINTF("");
+    DeviceClass *klass = DEVICE_GET_CLASS(obj);
+    if (klass->reset != NULL) {
+        klass->reset(&obj->parent_obj.parent_obj);
+    }
+}
+
 /*< private method >*/
 
 static uint64_t mytest_iomem_read(void *opaque, hwaddr offset, unsigned size)
@@ -186,6 +194,7 @@ static void mytest_realize(DeviceState *dev, Error **errp)
     DPRINTF("");
 
     if (old_callback_realize != NULL) {
+        DPRINTF("call base realize");
         old_callback_realize(dev, errp);
     }
 }
@@ -196,6 +205,9 @@ static Property properties[] = {
     DEFINE_PROP_END_OF_LIST(),
 };
 
+static void mytest_static_reset(DeviceState *dev) {
+    DPRINTF("");
+}
 
 static void mytest_static_init(ObjectClass *klass, void *data)
 {
@@ -209,6 +221,7 @@ static void mytest_static_init(ObjectClass *klass, void *data)
 
     // overwrite virtual method
     old_callback_realize = dc->realize; dc->realize = mytest_realize;
+    dc->reset = mytest_static_reset;
 
     dc->desc = "MyTest Device";
     dc->props = properties;

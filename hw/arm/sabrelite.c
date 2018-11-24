@@ -21,6 +21,22 @@
 
 #include "hw/misc/mytest.h"
 
+#define DEBUG_SABRELITE 1
+
+#ifdef DEBUG_SABRELITE
+
+#define DPRINTF(fmt, args...) \
+    do { \
+        fprintf(stderr, "[%s:%d]%s: " fmt "\n", __FILE__, __LINE__, \
+                                            __func__, ##args);  \
+    } while (0)
+
+#else
+
+#define DPRINTF(fmt, args...)
+
+#endif
+
 typedef struct IMX6Sabrelite {
     FslIMX6State soc;
     MemoryRegion ram;
@@ -138,12 +154,35 @@ static void sabrelite_init(MachineState *machine)
     }
 }
 
+typedef void (*MachineReset)(void);
+static MachineReset old_callback_reset = NULL;
+
+static void sabrelite_machine_reset(void) {
+    DPRINTF("");
+    bool ambiguous = FALSE;
+
+    Object *tmp = object_resolve_path("/machine/mytest", &ambiguous);
+    DPRINTF("object_resolve_path(\"/machine/mytest\", &ambiguous)=%p,%d", tmp, (int)ambiguous);
+    if (NULL != tmp) {
+        mytest_reset(MYTEST(tmp));
+    }
+
+    if (old_callback_reset != NULL) {
+        DPRINTF("call parent reset");
+        old_callback_reset();
+    } else {
+        qemu_devices_reset();
+    }
+}
+
 static void sabrelite_machine_init(MachineClass *mc)
 {
     mc->desc = "Freescale i.MX6 Quad SABRE Lite Board (Cortex A9)";
     mc->init = sabrelite_init;
     mc->max_cpus = FSL_IMX6_NUM_CPUS;
     mc->ignore_memory_transaction_failures = true;
+    old_callback_reset = mc->reset;
+    mc->reset = sabrelite_machine_reset;
 }
 
 DEFINE_MACHINE("sabrelite", sabrelite_machine_init)
