@@ -185,6 +185,7 @@
 /docs/interop/qemu-qmp-ref.info*
 /docs/interop/qemu-qmp-ref.txt
 /docs/version.texi
+/roms/vgabios/config.mak
 *.tps
 .stgit-*
 .git-submodule-status
